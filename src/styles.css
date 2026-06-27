@@ -1,0 +1,103 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 210 40% 98%;
+  --surface: 0 0% 100%;
+  --surface-2: 220 16% 96%;
+  --border: 220 13% 90%;
+  --muted: 220 16% 95%;
+  --fg: 222 47% 11%;
+  --fg-muted: 220 9% 46%;
+  --accent: 243 75% 59%;
+  --accent-fg: 0 0% 100%;
+  --danger: 0 72% 51%;
+  --success: 160 84% 39%;
+  --warning: 32 95% 44%;
+  --shadow-color: 222 47% 11%;
+}
+
+.dark {
+  --bg: 224 44% 7%;
+  --surface: 222 38% 10%;
+  --surface-2: 222 30% 14%;
+  --border: 222 22% 20%;
+  --muted: 222 30% 15%;
+  --fg: 210 40% 96%;
+  --fg-muted: 215 18% 62%;
+  --accent: 243 80% 67%;
+  --accent-fg: 0 0% 100%;
+  --danger: 0 72% 62%;
+  --success: 158 64% 52%;
+  --warning: 38 92% 58%;
+  --shadow-color: 224 60% 2%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background-color: hsl(var(--bg));
+  color: hsl(var(--fg));
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+  overflow: hidden;
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  transition-duration: 0.001ms !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--fg-muted) / 0.5);
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass {
+  background: hsl(var(--surface) / 0.7);
+  backdrop-filter: blur(12px);
+}
+
+.card-shadow {
+  box-shadow:
+    0 1px 2px hsl(var(--shadow-color) / 0.06),
+    0 8px 24px -12px hsl(var(--shadow-color) / 0.12);
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+.no-drag {
+  -webkit-user-select: text;
+}
