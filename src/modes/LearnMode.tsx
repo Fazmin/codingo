@@ -4,6 +4,7 @@ import {
   Clock,
   FileCode2,
   Flag,
+  FlaskConical,
   GraduationCap,
   Lock,
   Play,
@@ -21,6 +22,7 @@ import { ConsolePane, type ConsoleLine } from "../components/ConsolePane";
 import { TaskPane } from "../components/TaskPane";
 import { TranscriptPanel, type Turn } from "../components/TranscriptPanel";
 import { TalkButton, type AgentState } from "../components/TalkButton";
+import { ChatComposer } from "../components/ChatComposer";
 import {
   createSession,
   getCampaign,
@@ -47,6 +49,7 @@ export function LearnMode() {
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [accommodated, setAccommodated] = useState(false);
+  const [interaction, setInteraction] = useState<"voice" | "text">("voice");
 
   // workspace state
   const [files, setFiles] = useState<StarterFile[]>([]);
@@ -103,11 +106,16 @@ export function LearnMode() {
     };
   }, [session, logger]);
 
-  async function startSession(c: Campaign, lock = false) {
+  async function startSession(
+    c: Campaign,
+    opts: { lock?: boolean; interaction?: "voice" | "text" } = {},
+  ) {
+    const mode = opts.interaction ?? "voice";
     const s = await createSession(c.id, settings.studentId, accommodated);
     setCampaign(c);
     setSession(s);
-    if (lock) setLocked(true);
+    setInteraction(mode);
+    if (opts.lock) setLocked(true);
     setFiles(c.starterFiles.length ? structuredClone(c.starterFiles) : [
       { name: "main.py", language: "python", content: "" },
     ]);
@@ -126,7 +134,7 @@ export function LearnMode() {
         studentId: s.studentId,
         timestampMs: Date.now(),
         eventType: "task_state",
-        payload: { state: "started" },
+        payload: { state: "started", mode },
       }),
     );
   }
@@ -159,6 +167,27 @@ export function LearnMode() {
   function onPaste(size: number) {
     logger.log("paste", { size, large: size > 200, file: file()?.name });
     logger.noteActivity();
+  }
+
+  // Lab mode blocks chat pasting; record the attempt as an integrity signal.
+  function onChatPasteBlocked(size: number) {
+    logger.log("paste", { target: "chat", blocked: true, size });
+    logger.noteActivity();
+  }
+
+  function handleFlag(index: number, reason: string) {
+    const turn = turns[index];
+    if (!turn || turn.role !== "tutor") return;
+    logger.log("flag", {
+      target: "agent_reply",
+      text: turn.text,
+      rung: turn.rung,
+      objective: turn.objective,
+      reason,
+    });
+    setTurns((ts) =>
+      ts.map((t, i) => (i === index ? { ...t, flagged: true } : t)),
+    );
   }
 
   async function handleRun() {
@@ -265,8 +294,10 @@ export function LearnMode() {
         },
       ]);
 
-      setAgentState("speaking");
-      await speak(result.reply);
+      if (interaction === "voice") {
+        setAgentState("speaking");
+        await speak(result.reply);
+      }
     } catch (e) {
       setAgentError(e instanceof Error ? e.message : String(e));
       setTurns((t) => [
@@ -426,7 +457,13 @@ export function LearnMode() {
         <div className="flex w-80 shrink-0 flex-col border-l border-border bg-surface/40">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="text-sm font-semibold text-fg">Socratic tutor</div>
-            <Badge tone="accent">voice only</Badge>
+            {interaction === "text" ? (
+              <Badge tone="accent">
+                <FlaskConical size={11} /> Lab (text)
+              </Badge>
+            ) : (
+              <Badge tone="accent">voice</Badge>
+            )}
           </div>
           {agentError && (
             <div className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger">
@@ -434,18 +471,26 @@ export function LearnMode() {
               {agentError}
             </div>
           )}
-          <TranscriptPanel turns={turns} />
-          {!submitted && (
-            <TalkButton
-              state={agentState}
-              accommodated={session.accommodated || accommodated}
-              disabled={!campaign}
-              onStartRecording={startRecording}
-              onStopRecording={stopRecording}
-              onTypedSubmit={handleUtterance}
-              onToggleAccommodated={setAccommodated}
-            />
-          )}
+          <TranscriptPanel turns={turns} mode={interaction} onFlag={handleFlag} />
+          {!submitted &&
+            (interaction === "text" ? (
+              <ChatComposer
+                busy={agentState === "thinking"}
+                disabled={!campaign}
+                onSubmit={handleUtterance}
+                onPasteBlocked={onChatPasteBlocked}
+              />
+            ) : (
+              <TalkButton
+                state={agentState}
+                accommodated={session.accommodated || accommodated}
+                disabled={!campaign}
+                onStartRecording={startRecording}
+                onStopRecording={stopRecording}
+                onTypedSubmit={handleUtterance}
+                onToggleAccommodated={setAccommodated}
+              />
+            ))}
         </div>
       </div>
     </>
@@ -458,7 +503,10 @@ function Launcher({
   setAccommodated,
   preselectId,
 }: {
-  onStart: (c: Campaign, lock?: boolean) => void;
+  onStart: (
+    c: Campaign,
+    opts?: { lock?: boolean; interaction?: "voice" | "text" },
+  ) => void;
   accommodated: boolean;
   setAccommodated: (v: boolean) => void;
   preselectId?: string | null;
@@ -560,13 +608,24 @@ function Launcher({
                 variant="secondary"
                 size="lg"
                 className="mt-2 w-full justify-center"
+                disabled={!selected}
+                title="Lab mode: chat with the tutor by typing. Voice is off and pasting into the chat is disabled."
+                onClick={() => selected && onStart(selected, { interaction: "text" })}
+              >
+                <FlaskConical size={16} /> Start in Lab mode (text)
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="lg"
+                className="mt-2 w-full justify-center"
                 disabled={!selected || !pinReady}
                 title={
                   pinReady
                     ? "Run locked: Author and Analyze stay blocked until the code is entered"
                     : "Set a 4-digit code in Settings first"
                 }
-                onClick={() => selected && onStart(selected, true)}
+                onClick={() => selected && onStart(selected, { lock: true })}
               >
                 <Lock size={16} /> Lock &amp; Run
               </Button>

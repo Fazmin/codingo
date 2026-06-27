@@ -57,7 +57,8 @@ export type EventType =
   | "agent_reply"
   | "hypothesis"
   | "idle"
-  | "task_state";
+  | "task_state"
+  | "flag";
 
 export interface SessionEvent {
   id?: number;

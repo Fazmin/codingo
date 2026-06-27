@@ -14,6 +14,7 @@ const MARKER_COLOR: Record<string, string> = {
   task_state: "bg-violet-400",
   edit: "bg-fg-muted/25",
   output: "bg-fg-muted/20",
+  flag: "bg-rose-500",
 };
 
 interface ReplayScrubberProps {
@@ -131,8 +132,12 @@ function describe(e: SessionEvent): string {
       return `Error: ${String(e.payload.message ?? "")}`;
     case "run":
       return `Ran code (exit ${e.payload.exitCode})`;
+    case "flag":
+      return `Student flagged tutor reply as possible hallucination${e.payload.reason ? `: "${e.payload.reason}"` : ""}`;
     case "paste":
-      return `Pasted ${e.payload.size} chars${e.payload.large ? " (large)" : ""}`;
+      return e.payload.blocked
+        ? `Blocked chat paste (${e.payload.size} chars)`
+        : `Pasted ${e.payload.size} chars${e.payload.large ? " (large)" : ""}`;
     case "idle":
       return `Idle for ${Math.round(Number(e.payload.durationMs ?? 0) / 1000)}s`;
     case "task_state":

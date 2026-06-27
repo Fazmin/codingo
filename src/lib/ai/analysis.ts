@@ -49,7 +49,11 @@ asked; (4) any moments worth the educator's direct attention with their timestam
 not infer cheating; report observations and link every claim to timestamps so the
 educator can verify in the replay. Reward evidence of genuine reasoning and transfer,
 not performance of good-sounding questions. Every timestamp you cite must be an actual
-timestamp_ms value taken from the event log provided.`;
+timestamp_ms value taken from the event log provided.
+When the student flagged a tutor reply as a possible hallucination, treat it as a
+meaningful signal of their critical engagement: note it in the narrative and, where
+relevant, add it as an attention moment with its timestamp so the educator can verify it
+in the replay.`;
 
 function serializeEvents(events: SessionEvent[], startedAt: number): string {
   return events
@@ -73,7 +77,14 @@ function serializeEvents(events: SessionEvent[], startedAt: number): string {
           detail = `ran ${e.payload.language ?? "code"} -> exit ${e.payload.exitCode ?? "?"}`;
           break;
         case "paste":
-          detail = `pasted ${e.payload.size ?? 0} chars${e.payload.large ? " (LARGE)" : ""}`;
+          detail = e.payload.blocked
+            ? `attempted to paste ${e.payload.size ?? 0} chars into the chat (blocked by Lab mode)`
+            : `pasted ${e.payload.size ?? 0} chars${e.payload.large ? " (LARGE)" : ""}`;
+          break;
+        case "flag":
+          detail = `STUDENT FLAGGED a tutor reply as a possible hallucination${
+            e.payload.reason ? `: "${e.payload.reason}"` : ""
+          } (reply: "${String(e.payload.text ?? "").slice(0, 120)}")`;
           break;
         case "idle":
           detail = `idle for ${Math.round(Number(e.payload.durationMs ?? 0) / 1000)}s`;

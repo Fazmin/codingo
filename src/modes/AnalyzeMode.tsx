@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BarChart3,
   Clock,
+  Flag,
   HelpCircle,
   Sparkles,
 } from "lucide-react";
@@ -236,6 +237,11 @@ function SessionReport({
     return c;
   }, [events]);
 
+  const flagEvents = useMemo(
+    () => events.filter((e) => e.eventType === "flag"),
+    [events],
+  );
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 px-7 py-6">
       <div className="flex items-center justify-between">
@@ -332,6 +338,48 @@ function SessionReport({
             produce a report from the {events.length}-event log. The report links
             every claim to a replay timestamp so you can verify it.
           </p>
+        </Card>
+      )}
+
+      {flagEvents.length > 0 && (
+        <Card className="p-5">
+          <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-fg">
+            <Flag size={15} className="text-danger" /> Student-flagged hallucinations
+            <Badge tone="danger">{flagEvents.length}</Badge>
+          </h3>
+          <p className="mb-3 text-xs text-fg-muted">
+            Replies the student marked as possibly incorrect. Recorded directly from the
+            session (not model-generated). Click a timestamp to verify in the replay.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {flagEvents.map((e, i) => (
+              <li
+                key={i}
+                className="rounded-lg border border-danger/30 bg-danger/5 p-3"
+              >
+                <div className="mb-1 flex items-center gap-2">
+                  <button
+                    onClick={() => setReplayTime(e.timestampMs)}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger hover:bg-danger/20"
+                  >
+                    <Clock size={11} /> +{formatClock(e.timestampMs - session.startedAt)}
+                  </button>
+                  {typeof e.payload.rung === "number" && (
+                    <Badge tone="accent">Rung {String(e.payload.rung)}</Badge>
+                  )}
+                  {e.payload.objective ? (
+                    <Badge>{String(e.payload.objective)}</Badge>
+                  ) : null}
+                </div>
+                <p className="text-sm text-fg">"{String(e.payload.text ?? "")}"</p>
+                {e.payload.reason ? (
+                  <p className="mt-1 text-xs text-fg-muted">
+                    Student note: {String(e.payload.reason)}
+                  </p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
         </Card>
       )}
 
